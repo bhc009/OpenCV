@@ -4,11 +4,6 @@
 
 #pragma once
 
-//#include "opencv/cv.h"
-//#include "opencv/highgui.h"
-// #include "opencv2/imgproc/imgproc.hpp"
-// #include "opencv2/highgui/highgui.hpp"
-
 #include "opencv2/opencv.hpp"
 
 #include "ImageViewer.h"
@@ -50,10 +45,16 @@ public:
 	void Init(void);
 
 	//
+	void blob();
+	void convex_hull();
+	void contour();
+
+	//
 	afx_msg void OnDestroy();
 	afx_msg void OnBnClickedButtonLoadImage();
 	afx_msg void OnBnClickedButtonProcessing();
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
-	afx_msg void OnBnClickedButtonBlob();
-	afx_msg void OnBnClickedButtonBlob2();
+	CComboBox m_ctrlSelectFunction;
+	int GetFunction();
+	afx_msg void OnBnClickedButtonDo();
 };

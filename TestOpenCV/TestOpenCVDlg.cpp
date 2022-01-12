@@ -13,6 +13,14 @@
 #define new DEBUG_NEW
 #endif
 
+using namespace std;
+
+
+#define FUNCTION_NONE			0
+#define FUNCTION_BLOB			1
+#define FUNCTION_CONVEX_HULL	2
+#define FUNCTION_CONTOUR		3
+
 
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
@@ -61,6 +69,7 @@ CTestOpenCVDlg::CTestOpenCVDlg(CWnd* pParent /*=NULL*/)
 void CTestOpenCVDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_COMBO1, m_ctrlSelectFunction);
 }
 
 BEGIN_MESSAGE_MAP(CTestOpenCVDlg, CDialogEx)
@@ -71,8 +80,9 @@ BEGIN_MESSAGE_MAP(CTestOpenCVDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_LOAD_IMAGE, &CTestOpenCVDlg::OnBnClickedButtonLoadImage)
 	ON_BN_CLICKED(IDC_BUTTON_PROCESSING, &CTestOpenCVDlg::OnBnClickedButtonProcessing)
 	ON_WM_TIMER()
-	ON_BN_CLICKED(IDC_BUTTON_BLOB, &CTestOpenCVDlg::OnBnClickedButtonBlob)
-	ON_BN_CLICKED(IDC_BUTTON_BLOB2, &CTestOpenCVDlg::OnBnClickedButtonBlob2)
+//	ON_BN_CLICKED(IDC_BUTTON_BLOB, &CTestOpenCVDlg::OnBnClickedButtonBlob)
+//	ON_BN_CLICKED(IDC_BUTTON_BLOB2, &CTestOpenCVDlg::OnBnClickedButtonBlob2)
+ON_BN_CLICKED(IDC_BUTTON_DO, &CTestOpenCVDlg::OnBnClickedButtonDo)
 END_MESSAGE_MAP()
 
 
@@ -125,6 +135,11 @@ BOOL CTestOpenCVDlg::OnInitDialog()
 	//
 	SetTimer( 1, 50, NULL );
 
+	m_ctrlSelectFunction.InsertString(0, "blob");
+	m_ctrlSelectFunction.InsertString(1, "convex hull");
+	m_ctrlSelectFunction.InsertString(2, "get contour");
+
+	m_ctrlSelectFunction.SetCurSel(0);
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -182,6 +197,8 @@ HCURSOR CTestOpenCVDlg::OnQueryDragIcon()
 
 void CTestOpenCVDlg::Init(void)
 {
+	m_pViewer = NULL;
+
 	// viewer
 	CRuntimeClass  *pObject;
 	pObject = RUNTIME_CLASS( CImageViewer );
@@ -194,6 +211,7 @@ void CTestOpenCVDlg::OnDestroy()
 	CDialogEx::OnDestroy();
 
 	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
+	//m_srcImage.deallocate();
 }
 
 
@@ -214,8 +232,8 @@ void CTestOpenCVDlg::OnBnClickedButtonLoadImage()
 		strFile = dlg.GetFolderPath() + "\\" + dlg.GetFileName();
 
 		//
-// 		m_srcImage = cv::imread((LPSTR)(LPCTSTR)strFile, CV_8UC1 );
-		m_srcImage = cv::imread((LPSTR)(LPCTSTR)strFile, cv::IMREAD_UNCHANGED );
+ 		m_srcImage = cv::imread((LPSTR)(LPCTSTR)strFile, CV_8UC1 );
+//		m_srcImage = cv::imread((LPSTR)(LPCTSTR)strFile, cv::IMREAD_UNCHANGED );
 
 		//
 		m_pViewer->SetImage(&m_srcImage);
@@ -243,63 +261,28 @@ void CTestOpenCVDlg::OnBnClickedButtonProcessing()
 }
 
 
-//////////////////////////////////////////////////////////////////////////
-//
-// Blob 함수 테스트
-//
-//////////////////////////////////////////////////////////////////////////
-void CTestOpenCVDlg::OnBnClickedButtonBlob()
+void CTestOpenCVDlg::OnBnClickedButtonDo()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-/*	using namespace cv;
+	switch (GetFunction())
+	{
+	case FUNCTION_BLOB:
+		blob();
+		break;
 
+	case FUNCTION_CONVEX_HULL:
+		convex_hull();
+		break;
 
-	cv::Mat thresholdImage;
-	cv::threshold(m_srcImage, thresholdImage, 50, 255, cv::THRESH_BINARY );
-	cv::imwrite("d:\\test\\1.bmp", thresholdImage);
+	case FUNCTION_CONTOUR:
+		contour();
+		break;
 
-	// Setup SimpleBlobDetector parameters.
-	SimpleBlobDetector::Params params;
-
-	// Change thresholds
-	params.minThreshold = 1;
-	params.maxThreshold = 200;
-	params.thresholdStep = 1;
-
-	params.filterByArea = true;
-	params.minArea = 1;
-	params.maxArea = 9999999999;
-
-	params.filterByCircularity = false;
-	params.filterByInertia = false;
-	params.filterByConvexity = false;
-
-	params.filterByColor = false;
-	params.blobColor = 0;
-
-	SimpleBlobDetector detector(params);
-
-	//
-// 	SimpleBlobDetector detector;
-
-
-	// Detect
-	std::vector<KeyPoint> keyPoints;
-	detector.detect( thresholdImage, keyPoints );
-
-
-	// Draw result
-	Mat im_with_keypoints;
-	drawKeypoints(	m_srcImage,
-					keyPoints,
-					im_with_keypoints,
-					Scalar(255,0,0),
-					DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-
-
-	// display result
-	imshow("key points", im_with_keypoints);*/
+	default:
+		break;
+	}
 }
+
 
 
 void CTestOpenCVDlg::OnTimer(UINT_PTR nIDEvent)
@@ -317,58 +300,255 @@ void CTestOpenCVDlg::OnTimer(UINT_PTR nIDEvent)
 }
 
 
-void CTestOpenCVDlg::OnBnClickedButtonBlob2()
+int CTestOpenCVDlg::GetFunction()
+{
+	// TODO: 여기에 구현 코드 추가.
+
+	switch (m_ctrlSelectFunction.GetCurSel())
+	{
+	case 0:
+		return FUNCTION_BLOB;
+
+	case 1:
+		return FUNCTION_CONVEX_HULL;
+
+	case 2:
+		return FUNCTION_CONTOUR;
+
+	default :
+		return FUNCTION_NONE;
+	}
+
+	//return 0;
+}
+
+
+//
+//
+//	labeling 
+//
+//
+void CTestOpenCVDlg::blob(void)
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-/*	CBlobResult blobs;
-	CBlob *pCurrentBlob;
+	using namespace cv;
+
+	Mat img_color;
+
+	// threshold
+	cv::Mat thresholdImage;
+	cv::threshold(m_srcImage, thresholdImage, 50, 255, cv::THRESH_BINARY);
+	//cv::imwrite("d:\\test\\1.bmp", thresholdImage);
+
+	cvtColor(m_srcImage, img_color, COLOR_GRAY2BGR);
+
+	Mat img_label, state, centroids;
+	int nLables = connectedComponentsWithStats(thresholdImage,
+		img_label,
+		state,
+		centroids,
+		8,
+		CV_16U);
 
 
-	//
-	// 
-	//
-	IplImage *iplImage = cvCreateImage(cvSize(m_srcImage.cols, m_srcImage.rows) , IPL_DEPTH_8U, 1);
-
-	memcpy( iplImage->imageData, m_srcImage.data, m_srcImage.cols*m_srcImage.rows);
-
-
-	//
-	//
-	//
-	blobs = CBlobResult(	iplImage, 
-							NULL, 
-							255 );	// Background color
-
-
-	//
-	// 결과 표시
-	//
-	cv::Mat displayImage;
-	m_srcImage.copyTo(displayImage);
-
-	int num_blobs = blobs.GetNumBlobs(); 
-	for ( int i = 0; i < num_blobs; i++ )
+	// draw region
+	for (int y = 0; y < img_label.rows; y++)
 	{
-		pCurrentBlob = blobs.GetBlob( i );
+		ushort *pLabel = img_label.ptr<ushort>(y);
+		Vec3b* pPixel = img_color.ptr<Vec3b>(y);
 
-		int area = pCurrentBlob->Area();
-		int MinX = pCurrentBlob->MinX();
-		int MaxX = pCurrentBlob->MaxX();
-
-		if( area>100 )
+		for (int x = 0; x < img_label.cols; x++)
 		{
-			cv::circle(	displayImage, 
-						cv::Point( (pCurrentBlob->MaxX()+pCurrentBlob->MinX())/2, (pCurrentBlob->MaxY()+pCurrentBlob->MinY())/2 ) , 
-						150, 
-						cv::Scalar(0,0,0) );
+			pPixel[x][2] = 0; // pLabel[x] * 30;
+			pPixel[x][1] = pLabel[x] * 30;
+			pPixel[x][0] = 0; //pLabel[x] * 30;
 		}
 	}
 
-	cv::imshow("key points", displayImage);
+
+	// draw rect
+	for (int i = 0; i < nLables; i++)
+	{
+		if (i == 0)	// 배경에 대한 label
+		{
+			continue;
+		}
+
+		int *pLabel = state.ptr<int>(i);
+
+		rectangle(img_color, Rect(pLabel[0], pLabel[1], pLabel[2], pLabel[3]), Scalar(0, 0, 255));
+	}
 
 
-	//
-	//
-	//
-	cvReleaseImage(&iplImage);*/
+	imshow("label", img_color);
+
+	/*
+		// Setup SimpleBlobDetector parameters.
+		SimpleBlobDetector::Params params;
+
+		// Change thresholds
+		params.minThreshold = 1;
+		params.maxThreshold = 200;
+		params.thresholdStep = 1;
+
+		params.filterByArea = true;
+		params.minArea = 1;
+		params.maxArea = 9999999999;
+
+		params.filterByCircularity = false;
+		params.filterByInertia = false;
+		params.filterByConvexity = false;
+
+		params.filterByColor = false;
+		params.blobColor = 0;
+
+		SimpleBlobDetector detector(params);
+
+		//
+	// 	SimpleBlobDetector detector;
+
+
+		// Detect
+		std::vector<KeyPoint> keyPoints;
+		detector.detect( thresholdImage, keyPoints );
+
+
+		// Draw result
+		Mat im_with_keypoints;
+		drawKeypoints(	m_srcImage,
+						keyPoints,
+						im_with_keypoints,
+						Scalar(255,0,0),
+						DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+
+
+		// display result
+		imshow("key points", im_with_keypoints);
+		*/
 }
+
+
+//
+//
+//
+//
+//
+void CTestOpenCVDlg::convex_hull(void)
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	using namespace cv;
+
+	int iCh = m_srcImage.channels();
+	if (iCh != 1)
+	{
+		AfxMessageBox("Error > 1 채널 영상만 사용가능");
+		return;
+	}
+
+	int thresh = 10;
+
+	// edge filter
+	Mat imgCanny;
+	Canny(m_srcImage, imgCanny, thresh, thresh);
+	
+
+	// find contour
+	vector<vector<Point>> contours;
+	findContours(imgCanny, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+
+	// get convex hull
+	vector<vector<Point>>hull(contours.size());
+	for (size_t i = 0; i < contours.size(); i++)
+	{
+		convexHull(contours[i], hull[i]);
+	}
+
+
+	// draw result
+	Mat imgResult;
+	cvtColor(m_srcImage, imgResult, COLOR_GRAY2BGR);
+	//Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
+	for (size_t i = 0; i < contours.size(); i++)
+	{
+		Scalar color = Scalar(0, 0, 255);	// red
+		//drawContours(drawing, contours, (int)i, color);
+		drawContours(imgResult, contours, (int)i, color);
+	}
+
+
+	// *make image
+	Mat imgPoly(m_srcImage.rows, m_srcImage.cols, CV_8U, Scalar(0) );
+	fillPoly(imgPoly, hull, Scalar(255));
+	imshow("convex", imgPoly);
+
+
+	// show
+	//imshow("convex", imgResult);
+}
+
+
+
+//
+//
+//
+//
+//
+void CTestOpenCVDlg::contour(void)
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	using namespace cv;
+
+	int iCh = m_srcImage.channels();
+	if (iCh != 1)
+	{
+		AfxMessageBox("Error > 1 채널 영상만 사용가능");
+		return;
+	}
+
+	int thresh = 10;
+
+	// threshold
+	cv::Mat imgThreshold;
+	cv::threshold(m_srcImage, imgThreshold, 50, 255, cv::THRESH_BINARY);
+
+
+	// find contour
+	vector<vector<Point>> contours;
+	findContours(imgThreshold, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+
+	// get convex hull
+	vector<vector<Point>>hull(contours.size());
+	for (size_t i = 0; i < contours.size(); i++)
+	{
+		convexHull(contours[i], hull[i]);
+	}
+
+
+	// draw result
+	Mat imgResult;
+	cvtColor(m_srcImage, imgResult, COLOR_GRAY2BGR);
+	//Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
+	for (size_t i = 0; i < contours.size(); i++)
+	{
+		Scalar color = Scalar(0, 0, 255);	// red
+		//drawContours(drawing, contours, (int)i, color);
+		drawContours(imgResult, contours, (int)i, color);
+	}
+
+
+	// *make image
+	Mat imgPoly(m_srcImage.rows, m_srcImage.cols, CV_8U, Scalar(0));
+///	fillPoly(imgPoly, hull, Scalar(255));
+	fillConvexPoly(imgPoly, hull[0], Scalar(255));
+	imshow("convex", imgResult);
+
+
+	imwrite("d:\\test\\result.bmp", imgPoly);
+
+	// show
+	//imshow("convex", imgResult);
+}
+
+
